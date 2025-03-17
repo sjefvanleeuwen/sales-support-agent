@@ -1,0 +1,17 @@
+{
+  "name": "sales-support-agent",
+  "version": "1.0.0",
+  "description": "Sales support agent using LangChain and Ollama",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@langchain/community": "^0.3.36",
+    "@langchain/openai": "^0.0.11",
+    "dotenv": "^16.3.1",
+    "langchain": "^0.3.19"
+  }
+}

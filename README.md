@@ -140,6 +140,116 @@ To build a LangChain agent like ours for sales and support, follow these steps:
    - Refine prompts based on response quality
    - Optimize routing logic for better query understanding
 
+## Technical Deep Dive: Product Comparison Chain
+
+The product comparison functionality is one of the most powerful features of our sales agent. Here's a detailed look at how it works:
+
+### How Product Comparison Works
+
+1. **Query Detection**
+   - The `SalesSupportAgent` class analyzes each user input for comparison-related keywords
+   - Keywords like "compare", "difference", "vs", "versus" trigger the comparison chain
+   - This pattern matching approach ensures users don't need to use exact commands
+
+2. **Product Entity Extraction**
+   - Once a comparison intent is detected, the agent scans for product names in the query
+   - It uses a simple but effective matching algorithm that checks if product names from our catalog appear in the user's query
+   - Partial matches are supported, allowing users to refer to products in natural ways
+
+3. **Dynamic Prompt Construction**
+   - The system dynamically builds a specialized prompt containing only the relevant products
+   - Each product's details (name, price, description, features) are formatted for easy comparison
+   - The hardcoded template ensures consistent output formatting
+
+4. **Side-by-Side Analysis**
+   - The LLM processes the specialized prompt to generate a detailed comparison
+   - The comparison highlights key differences in:
+     - Price points and value proposition
+     - Power output and charging speeds
+     - Installation requirements
+     - Special features and target use cases
+
+### Technical Implementation
+
+```javascript
+async handleProductComparison(userInput) {
+  // Extract product names mentioned in the user input
+  const mentionedProducts = this.productNames.filter(name => 
+    userInput.toLowerCase().includes(name.toLowerCase())
+  );
+  
+  // Fall back to general sales chain if fewer than 2 products are mentioned
+  if (mentionedProducts.length < 2) {
+    return await this.salesChain.call({
+      input: userInput
+    }).then(res => res.response);
+  }
+  
+  // Create a specialized comparison chain with just the mentioned products
+  const comparisonChain = createProductComparisonChain(this.llm, mentionedProducts);
+  const response = await comparisonChain.call({
+    input: userInput
+  });
+  
+  return response.comparison;
+}
+```
+
+The `createProductComparisonChain` function:
+
+```javascript
+export const createProductComparisonChain = (llm, productNames) => {
+  // Fetch and format detailed information about each product
+  const productList = productNames.map(name => {
+    const product = getProductByName(name);
+    if (!product) return `Product "${name}" not found`;
+    
+    return `Product: ${product.name}\nPrice: $${product.price}\nDescription: ${product.description}\nFeatures: ${product.features.join(", ")}`;
+  }).join("\n\n");
+
+  // Create a template with the product information directly embedded
+  const completeTemplate = `
+Compare the following products:
+
+${productList}
+
+Highlight the key differences and similarities. Identify which product might be best for:
+1. Budget-conscious customers
+2. Feature-oriented customers
+3. Enterprise/business needs
+
+Customer question: {input}
+`;
+
+  // Create a prompt template with the product data hardcoded
+  const finalPrompt = new PromptTemplate({
+    template: completeTemplate,
+    inputVariables: ["input"],
+  });
+
+  // Create the chain with minimal verbosity based on environment setting
+  return new ConversationChain({
+    llm,
+    prompt: finalPrompt,
+    verbose: verboseOutput
+  });
+};
+```
+
+### Benefits of This Approach
+
+1. **Precision**: By focusing only on the products mentioned, the agent provides more relevant and concise comparisons.
+
+2. **Efficiency**: Dynamically creating a specialized chain avoids confusion that might occur if all products were included in every prompt.
+
+3. **Clarity**: The structured output format helps customers understand key differences at a glance.
+
+4. **Adaptability**: The comparison can handle any combination of products from our catalog, even when customers request unusual comparisons (like comparing a home charger to a commercial one).
+
+5. **Contextual Understanding**: By including the original customer question in the prompt, the comparison focuses on aspects most relevant to the customer's needs.
+
+This specialized comparison functionality demonstrates how LangChain can be used to create domain-specific reasoning chains that enhance the overall capabilities of an AI sales assistant.
+
 ### Agent Architecture Diagram
 
 ```

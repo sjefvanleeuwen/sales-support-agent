@@ -60,6 +60,7 @@ export class SalesSupportAgent {
       input: userInput
     });
     
-    return response.comparison;
+    // Change this line to use response.response instead of response.comparison
+    return response.response;
   }
 }
